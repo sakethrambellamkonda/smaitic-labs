@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: node-api
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
       app: node-api
@@ -11,10 +11,32 @@ spec:
     metadata:
       labels:
         app: node-api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
     spec:
       containers:
         - name: node-api
-          image: node-api:latest
+          image: your-artifactory-url/node-api:latest  #we can change to our desire url 
           ports:
             - name: api-web
               containerPort: 3000
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: api-web
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: api-web
+            initialDelaySeconds: 15
+            periodSeconds: 20
