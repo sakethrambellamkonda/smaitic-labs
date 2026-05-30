@@ -1,0 +1,60 @@
+pipeline {
+agent any
+
+```
+environment {
+    REGISTRY = "your-artifactory-url" #can be changed to our url. For now just adding as a placeholder as no artifactory is mentioned
+    IMAGE_NAME = "node-api"
+    TAG = "${BUILD_NUMBER}"
+}
+
+stages {
+
+    stage('Checkout Code') {
+        steps {
+            git 'https://github.com/sakethrambellamkonda/smaitic-labs.git'
+        }
+    }
+
+    stage('Install Dependencies & Run Tests') {
+        steps {
+            sh 'npm install'
+            sh 'npm test || true'
+        }
+    }
+
+    stage('Build Docker Image') {
+        steps {
+            sh "docker build -t $REGISTRY/$IMAGE_NAME:$TAG ."
+        }
+    }
+
+    stage('Security Scan') {
+        steps {
+            sh 'echo "Security scan step goes here"'
+        }
+    }
+
+    stage('Push Image to Artifactory') {
+        steps {
+            withCredentials([string(credentialsId: 'jarvis-artifactory', variable: 'TOKEN')]) {
+                sh """
+                echo $TOKEN | docker login $REGISTRY -u user --password-stdin
+                docker push $REGISTRY/$IMAGE_NAME:$TAG
+                """
+            }
+        }
+    }
+
+    stage('Deploy to EKS') {
+        steps {
+            sh """
+            kubectl set image deployment/node-api \
+            node-api=$REGISTRY/$IMAGE_NAME:$TAG
+            """
+        }
+    }
+}
+```
+
+}
